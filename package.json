@@ -1,6 +1,6 @@
 {
   "name": "ccs-personal-shopper",
   "version": "1.0.0",
-  "description": "Clean, Clear & Safe Personal Shopper — AI-powered product analyzer with Amazon integration",
-  "engines": { "node": "18.x" }
+  "description": "Clean, Clear & Safe Personal Shopper",
+  "engines": { "node": "24.x" }
 }
