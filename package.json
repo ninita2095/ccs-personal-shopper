@@ -1,6 +1,12 @@
 {
-  "name": "ccs-personal-shopper",
-  "version": "1.0.0",
-  "description": "Clean, Clear & Safe Personal Shopper",
-  "engines": { "node": "24.x" }
+  "version": 2,
+  "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/", "dest": "/public/index.html" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
 }
