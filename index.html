@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clean, Clear & Safe — Personal Shopper</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f7; color: #1a1a1a; min-height: 100vh; }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .brand { font-size: 24px; font-weight: 500; color: #1a1a1a; letter-spacing: -0.3px; }
+  .brand span { color: #1D9E75; }
+  .tagline { font-size: 14px; color: #888; margin-top: 4px; margin-bottom: 2rem; }
+
+  .input-card { background: #fff; border: 0.5px solid #e0e0dc; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .tab { font-size: 13px; padding: 6px 14px; border-radius: 8px; border: 0.5px solid #e0e0dc; background: transparent; cursor: pointer; color: #888; }
+  .tab.active { background: #f2f2ee; color: #1a1a1a; font-weight: 500; border-color: #ccc; }
+  .text-row { display: flex; gap: 8px; }
+  .text-row input { flex: 1; padding: 10px 14px; border-radius: 8px; border: 0.5px solid #e0e0dc; font-size: 14px; background: #f9f9f7; color: #1a1a1a; outline: none; }
+  .text-row input:focus { border-color: #1D9E75; }
+  .btn-green { padding: 10px 20px; border-radius: 8px; border: none; background: #1D9E75; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-green:hover { background: #0F6E56; }
+  .btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
+  .upload-zone { border: 0.5px dashed #ccc; border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; color: #888; font-size: 14px; position: relative; transition: background 0.15s; }
+  .upload-zone:hover { background: #f2f2ee; }
+  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .preview-wrap { display: flex; align-items: center; gap: 12px; margin-top: 12px; justify-content: center; }
+  .preview-img { height: 80px; border-radius: 8px; object-fit: contain; background: #f2f2ee; padding: 4px; }
+  .btn-full { width: 100%; margin-top: 12px; padding: 10px; border-radius: 8px; border: none; background: #1D9E75; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .btn-full:hover { background: #0F6E56; }
+  .btn-full:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .loading { text-align: center; padding: 3rem; color: #888; font-size: 14px; }
+  .loading-step { font-size: 12px; color: #aaa; margin-top: 8px; }
+  .spinner { width: 28px; height: 28px; border: 2px solid #e0e0dc; border-top-color: #1D9E75; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .scanned-card { background: #fff; border: 0.5px solid #e0e0dc; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.75rem; }
+  .scanned-top { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; }
+  .scanned-img { width: 72px; height: 72px; border-radius: 8px; object-fit: contain; background: #f2f2ee; padding: 4px; flex-shrink: 0; }
+  .scanned-img-placeholder { width: 72px; height: 72px; border-radius: 8px; background: #f2f2ee; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #888; text-align: center; padding: 6px; flex-shrink: 0; line-height: 1.4; font-weight: 500; }
+  .scanned-meta { flex: 1; }
+  .scanned-name { font-size: 15px; font-weight: 500; color: #1a1a1a; margin-bottom: 3px; }
+  .scanned-sub { font-size: 12px; color: #888; margin-bottom: 10px; }
+  .score-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 12px; font-weight: 500; padding: 3px 11px; border-radius: 20px; white-space: nowrap; }
+  .b-avoid   { background: #FCEBEB; color: #501313; }
+  .b-caution { background: #FAECE7; color: #4A1B0C; }
+  .b-accept  { background: #FAEEDA; color: #633806; }
+  .b-clean   { background: #E1F5EE; color: #085041; }
+  .score-num { font-size: 14px; color: #666; }
+  .score-detail { font-size: 12px; color: #aaa; }
+  .section-title { font-size: 11px; font-weight: 500; color: #aaa; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+
+  .accordion { border: 0.5px solid #ececea; border-radius: 8px; overflow: hidden; margin-bottom: 6px; }
+  .acc-trigger { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; background: #f9f9f7; user-select: none; width: 100%; border: none; text-align: left; }
+  .acc-trigger:hover { background: #f2f2ee; }
+  .acc-left-bar { width: 3px; height: 18px; border-radius: 2px; flex-shrink: 0; }
+  .bar-high { background: #E24B4A; }
+  .bar-medium { background: #EF9F27; }
+  .bar-low { background: #BA7517; }
+  .acc-name { font-size: 13px; font-weight: 500; color: #1a1a1a; flex: 1; }
+  .risk-pill { font-size: 11px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .risk-high   { background: #FCEBEB; color: #791F1F; }
+  .risk-medium { background: #FAEEDA; color: #633806; }
+  .risk-low    { background: #FAECE7; color: #4A1B0C; }
+  .acc-arrow { font-size: 12px; color: #aaa; transition: transform 0.2s; display: inline-block; }
+  .acc-arrow.open { transform: rotate(180deg); }
+  .acc-body { display: none; padding: 12px 14px 14px 27px; border-top: 0.5px solid #ececea; background: #fff; }
+  .acc-body.open { display: block; }
+  .acc-effect { font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 6px; }
+  .acc-source { font-size: 11px; color: #aaa; }
+
+  .divider { height: 0.5px; background: #ececea; margin: 1.5rem 0; }
+  .alt-label { font-size: 13px; color: #888; margin-bottom: 1rem; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+  .card { background: #fff; border: 0.5px solid #ececea; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.15s; }
+  .card:hover { border-color: #ccc; }
+  .card-img-wrap { height: 140px; background: #f9f9f7; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .card-img-wrap img { max-height: 130px; max-width: 100%; object-fit: contain; padding: 8px; }
+  .no-img { font-size: 11px; color: #aaa; }
+  .card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; gap: 7px; }
+  .card-header-row { display: flex; align-items: center; justify-content: space-between; }
+  .card-score { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+  .card-name-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; cursor: pointer; }
+  .card-name { font-size: 13px; font-weight: 500; color: #1a1a1a; line-height: 1.4; flex: 1; }
+  .card-chevron { font-size: 13px; color: #aaa; flex-shrink: 0; margin-top: 2px; transition: transform 0.2s; display: inline-block; }
+  .card-chevron.open { transform: rotate(180deg); }
+  .card-detail { display: none; border-top: 0.5px solid #ececea; padding: 10px 0 4px; margin-top: 4px; }
+  .card-detail.open { display: block; }
+  .card-why { font-size: 11px; color: #666; line-height: 1.5; margin-bottom: 10px; }
+  .card-why strong { color: #1D9E75; font-weight: 500; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; }
+  .card-price { font-size: 13px; font-weight: 500; color: #1D9E75; }
+  .card-amz { font-size: 11px; color: #aaa; text-decoration: none; }
+  .card-amz:hover { color: #1D9E75; }
+  .err { background: #FCEBEB; border: 0.5px solid #f0c0c0; border-radius: 8px; padding: 1rem 1.25rem; font-size: 13px; color: #501313; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="brand">Clean, Clear <span>&</span> Safe</div>
+  <div class="tagline">Personal Shopper — Objective product analysis · Amazon</div>
+
+  <div class="input-card">
+    <div class="tabs">
+      <button class="tab active" id="tab-text" onclick="switchTab('text')">Text / Name</button>
+      <button class="tab" id="tab-photo" onclick="switchTab('photo')">Product photo</button>
+    </div>
+    <div id="panel-text">
+      <div class="text-row">
+        <input type="text" id="text-q" placeholder="e.g. Clorox wipes, Cheerios, Neutrogena sunscreen..." onkeydown="if(event.key==='Enter')doAnalyze()" />
+        <button class="btn-green" onclick="doAnalyze()">Analyze</button>
+      </div>
+    </div>
+    <div id="panel-photo" style="display:none;">
+      <div class="upload-zone">
+        <input type="file" accept="image/*" id="file-input" onchange="handleFile(event)" />
+        <div id="drop-label">Click or drag a product photo here</div>
+        <div id="preview-wrap" style="display:none;" class="preview-wrap">
+          <img id="preview-img" class="preview-img" />
+          <span id="preview-name" style="font-size:13px;color:#888;"></span>
+        </div>
+      </div>
+      <button class="btn-full" id="photo-btn" onclick="doAnalyzePhoto()" disabled>Analyze photo</button>
+    </div>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<script>
+let b64 = null, b64type = null;
+const API = '/api/analyze';
+
+function switchTab(t) {
+  ['text','photo'].forEach(x => {
+    document.getElementById('panel-'+x).style.display = x===t?'block':'none';
+    document.getElementById('tab-'+x).classList.toggle('active', x===t);
+  });
+}
+
+function handleFile(e) {
+  const f = e.target.files[0]; if(!f) return;
+  b64type = f.type;
+  const r = new FileReader();
+  r.onload = ev => {
+    b64 = ev.target.result.split(',')[1];
+    document.getElementById('preview-img').src = ev.target.result;
+    document.getElementById('preview-name').textContent = f.name;
+    document.getElementById('preview-wrap').style.display = 'flex';
+    document.getElementById('drop-label').style.display = 'none';
+    document.getElementById('photo-btn').disabled = false;
+  };
+  r.readAsDataURL(f);
+}
+
+function badgeCls(label) {
+  const m = { CLEAN:'b-clean', ACCEPTABLE:'b-accept', CAUTION:'b-caution', AVOID:'b-avoid' };
+  return m[label] || 'b-caution';
+}
+function scoreClass(s) {
+  if(s>=90) return {cls:'b-clean',label:'CLEAN'};
+  if(s>=70) return {cls:'b-accept',label:'ACCEPTABLE'};
+  if(s>=50) return {cls:'b-caution',label:'CAUTION'};
+  return {cls:'b-avoid',label:'AVOID'};
+}
+function riskBar(r) { return r==='HIGH'?'bar-high':r==='MEDIUM'?'bar-medium':'bar-low'; }
+function riskPill(r) { return r==='HIGH'?'risk-high':r==='MEDIUM'?'risk-medium':'risk-low'; }
+function riskLabel(r) { return r==='HIGH'?'HIGH RISK':r==='MEDIUM'?'MEDIUM RISK':'MODERATE RISK'; }
+
+function toggleAcc(btn) {
+  const body = btn.nextElementSibling;
+  const arrow = btn.querySelector('.acc-arrow');
+  body.classList.toggle('open'); arrow.classList.toggle('open');
+}
+function toggleCard(row) {
+  const card = row.closest('.card');
+  card.querySelector('.card-detail').classList.toggle('open');
+  card.querySelector('.card-chevron').classList.toggle('open');
+}
+
+function renderResults(analysis, amazonProducts) {
+  const out = document.getElementById('output');
+  const sc = scoreClass(analysis.score);
+  const compounds = (analysis.compounds||[]).map(c => `
+    <div class="accordion">
+      <button class="acc-trigger" onclick="toggleAcc(this)">
+        <span class="acc-left-bar ${riskBar(c.risk)}"></span>
+        <span class="acc-name">${c.name}</span>
+        <span class="risk-pill ${riskPill(c.risk)}">${riskLabel(c.risk)}</span>
+        <span class="acc-arrow">▾</span>
+      </button>
+      <div class="acc-body">
+        <div class="acc-effect">${c.effect}</div>
+        <div class="acc-source">${c.source}</div>
+      </div>
+    </div>`).join('');
+
+  const cards = (analysis.search_terms||[]).map((term, i) => {
+    const prod = amazonProducts[i] || {};
+    const altScore = analysis.alternatives_scores?.[i] || 70;
+    const altLabel = analysis.alternatives_labels?.[i] || scoreClass(altScore).label;
+    const why = analysis.alternatives_why?.[i] || '';
+    const name = prod.title || term;
+    const price = prod.price || 'See on Amazon';
+    const url = prod.url || `https://www.amazon.com/s?k=${encodeURIComponent(term)}`;
+    const imgHtml = prod.image
+      ? `<img src="${prod.image}" onerror="this.parentElement.innerHTML='<span class=no-img>No image</span>'" />`
+      : `<span class="no-img">No image</span>`;
+    return `
+    <div class="card">
+      <div class="card-img-wrap">${imgHtml}</div>
+      <div class="card-body">
+        <div class="card-header-row">
+          <span class="badge ${badgeCls(altLabel)}">${altLabel}</span>
+          <span class="card-score">${altScore}/100</span>
+        </div>
+        <div class="card-name-row" onclick="toggleCard(this)">
+          <span class="card-name">${name}</span>
+          <span class="card-chevron">▾</span>
+        </div>
+        <div class="card-detail">
+          <div class="card-why"><strong>Why?</strong> ${why}</div>
+          <div class="card-footer">
+            <span class="card-price">${price}</span>
+            <a class="card-amz" href="${url}" target="_blank">View on Amazon →</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  out.innerHTML = `
+    <div class="scanned-card">
+      <div class="scanned-top">
+        <div class="scanned-img-placeholder">${analysis.product_name||'Product'}</div>
+        <div class="scanned-meta">
+          <div class="scanned-name">${analysis.product_name||'Analyzed Product'}</div>
+          <div class="scanned-sub">${analysis.category||''}</div>
+          <div class="score-row">
+            <span class="badge ${sc.cls}">${sc.label}</span>
+            <span class="score-num">${analysis.score}/100</span>
+            <span class="score-detail">— ${analysis.score_detail||''}</span>
+          </div>
+        </div>
+      </div>
+      <div class="section-title">Compounds identified</div>
+      ${compounds}
+    </div>
+    <div class="divider"></div>
+    <div class="alt-label">6 cleaner alternatives — ranked by CCS score</div>
+    <div class="grid">${cards}</div>`;
+}
+
+async function runAnalysis(body) {
+  const out = document.getElementById('output');
+  out.innerHTML = `<div class="loading"><div class="spinner"></div>Analyzing product...<div class="loading-step">Running CCS scoring criteria</div></div>`;
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error('Server error '+res.status);
+    const { analysis, amazonProducts, error } = await res.json();
+    if(error) throw new Error(error);
+    renderResults(analysis, amazonProducts);
+  } catch(e) {
+    out.innerHTML = `<div class="err">Error: ${e.message}</div>`;
+  }
+}
+
+async function doAnalyze() {
+  const q = document.getElementById('text-q').value.trim();
+  if(!q) return;
+  await runAnalysis({ query: q });
+}
+async function doAnalyzePhoto() {
+  if(!b64) return;
+  await runAnalysis({ imageBase64: b64, imageType: b64type });
+}
+</script>
+</body>
+</html>
