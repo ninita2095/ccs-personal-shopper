@@ -28,14 +28,14 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5',
         max_tokens: 2000,
         system: `You are Clean, Clear & Safe — an objective technical product analyzer. Respond in the same language the user uses (Spanish or English).
 
-Return ONLY a raw JSON object, no markdown, no code fences, no extra text:
+Return ONLY a raw JSON object, no markdown, no code fences, no extra text whatsoever:
 {
   "product_name": "Full product name",
-  "category": "Category (Food, Hygiene, Cleaning, Medicine, Clothing)",
+  "category": "Category",
   "score": 45,
   "score_label": "AVOID",
   "score_detail": "5 compounds of concern identified",
@@ -49,7 +49,7 @@ Return ONLY a raw JSON object, no markdown, no code fences, no extra text:
   ],
   "alternatives": [
     {
-      "search_query": "specific amazon search term for a real clean product",
+      "search_query": "specific amazon product search term",
       "score": 92,
       "label": "CLEAN",
       "why": "Why this is a safer alternative"
@@ -60,9 +60,7 @@ Return ONLY a raw JSON object, no markdown, no code fences, no extra text:
 Rules:
 - alternatives must have exactly 6 items
 - search_query must be specific real product names findable on Amazon US
-- Scoring: 90-100 CLEAN · 70-89 ACCEPTABLE · 50-69 CAUTION · below 50 AVOID
-- Penalize: quats, parabens, artificial dyes, PFAS, endocrine disruptors, artificial preservatives
-- Reward: organic, EWG verified, simple ingredient lists`,
+- Scoring: 90-100 CLEAN, 70-89 ACCEPTABLE, 50-69 CAUTION, below 50 AVOID`,
         messages
       })
     });
@@ -77,9 +75,10 @@ Rules:
 
     let analysis;
     try {
-      analysis = JSON.parse(txt.replace(/```json|```/g, '').trim());
+      const clean = txt.replace(/```json|```/g, '').trim();
+      analysis = JSON.parse(clean);
     } catch (e) {
-      return res.status(500).json({ error: `JSON parse failed: ${e.message}`, raw: txt.slice(0, 300) });
+      return res.status(500).json({ error: `JSON parse failed: ${e.message}`, raw: txt.slice(0, 500) });
     }
 
     const amazonProducts = await Promise.all(
