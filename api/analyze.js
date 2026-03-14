@@ -7,20 +7,18 @@ export default async function handler(req, res) {
 
   const { query, imageBase64, imageType } = req.body;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-  const BD_TOKEN = process.env.BRIGHTDATA_TOKEN;
+  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
-  if (!ANTHROPIC_KEY || !BD_TOKEN) {
-    return res.status(500).json({ error: 'Missing API keys in environment' });
-  }
+  if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'Missing ANTHROPIC_API_KEY' });
+  if (!RAPIDAPI_KEY) return res.status(500).json({ error: 'Missing RAPIDAPI_KEY' });
 
   try {
-    // Step 1: Claude analyzes the product
     const messages = imageBase64
       ? [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: imageType, data: imageBase64 } },
-          { type: 'text', text: 'Identify this product and find 6 clean safe alternatives.' }
+          { type: 'text', text: 'Identify this product and analyze it.' }
         ]}]
-      : [{ role: 'user', content: `Analyze and find 6 clean alternatives for: ${query}` }];
+      : [{ role: 'user', content: `Analyze this product: ${query}` }];
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -30,79 +28,94 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: `You are Clean, Clear & Safe — an objective, technical product analyzer. Respond in the same language the user uses (Spanish or English).
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        system: `You are Clean, Clear & Safe — an objective technical product analyzer. Respond in the same language the user uses (Spanish or English).
 
-Return ONLY a raw JSON object, no markdown, no code fences:
+Return ONLY a raw JSON object, no markdown, no code fences, no extra text:
 {
-  "product_name": "Full product name identified",
-  "category": "Category",
-  "score": 65,
-  "score_label": "CAUTION",
-  "score_detail": "N compounds of concern identified",
+  "product_name": "Full product name",
+  "category": "Category (Food, Hygiene, Cleaning, Medicine, Clothing)",
+  "score": 45,
+  "score_label": "AVOID",
+  "score_detail": "5 compounds of concern identified",
   "compounds": [
     {
       "name": "Compound name",
-      "risk": "HIGH|MEDIUM|MODERATE",
-      "effect": "Technical explanation of health risk",
-      "source": "Scientific sources"
+      "risk": "HIGH",
+      "effect": "Health risk explanation",
+      "source": "EWG / PubChem / FDA / EFSA"
     }
   ],
-  "search_terms": ["specific amazon search term 1", "term 2", "term 3", "term 4", "term 5", "term 6"],
-  "alternatives_why": ["Why alt 1 is cleaner", "Why alt 2", "Why alt 3", "Why alt 4", "Why alt 5", "Why alt 6"],
-  "alternatives_scores": [94, 88, 81, 74, 70, 55],
-  "alternatives_labels": ["CLEAN","CLEAN","CLEAN","ACCEPTABLE","ACCEPTABLE","CAUTION"]
+  "alternatives": [
+    {
+      "search_query": "specific amazon search term for a real clean product",
+      "score": 92,
+      "label": "CLEAN",
+      "why": "Why this is a safer alternative"
+    }
+  ]
 }
 
-Scoring: penalize heavily artificial colorants, preservatives, sweeteners, hidden sugar aliases, toxic compounds, endocrine disruptors, quats. Reward simple verifiable ingredients, organic.
-Tiers: 90-100 CLEAN · 70-89 ACCEPTABLE · 50-69 CAUTION · below 50 AVOID.
-search_terms must be specific real product names for Amazon search.`,
+Rules:
+- alternatives must have exactly 6 items
+- search_query must be specific real product names findable on Amazon US
+- Scoring: 90-100 CLEAN · 70-89 ACCEPTABLE · 50-69 CAUTION · below 50 AVOID
+- Penalize: quats, parabens, artificial dyes, PFAS, endocrine disruptors, artificial preservatives
+- Reward: organic, EWG verified, simple ingredient lists`,
         messages
       })
     });
 
+    if (!claudeRes.ok) {
+      const err = await claudeRes.text();
+      return res.status(500).json({ error: `Claude API error ${claudeRes.status}: ${err}` });
+    }
+
     const claudeData = await claudeRes.json();
     const txt = claudeData.content?.find(b => b.type === 'text')?.text || '';
-    const analysis = JSON.parse(txt.replace(/```json|```/g, '').trim());
 
-    // Step 2: Bright Data fetches real Amazon products
+    let analysis;
+    try {
+      analysis = JSON.parse(txt.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      return res.status(500).json({ error: `JSON parse failed: ${e.message}`, raw: txt.slice(0, 300) });
+    }
+
     const amazonProducts = await Promise.all(
-      (analysis.search_terms || []).map(async (term) => {
+      (analysis.alternatives || []).map(async (alt) => {
         try {
-          const bdRes = await fetch('https://api.brightdata.com/request', {
-            method: 'POST',
+          const url = `https://real-time-amazon-data.p.rapidapi.com/search?query=${encodeURIComponent(alt.search_query)}&page=1&country=US&sort_by=RELEVANCE&product_condition=ALL`;
+          const r = await fetch(url, {
+            method: 'GET',
             headers: {
-              'Authorization': `Bearer ${BD_TOKEN}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              zone: 'mcp_unlocker',
-              url: `https://www.amazon.com/s?k=${encodeURIComponent(term)}`,
-              format: 'raw'
-            })
+              'x-rapidapi-host': 'real-time-amazon-data.p.rapidapi.com',
+              'x-rapidapi-key': RAPIDAPI_KEY
+            }
           });
 
-          if (!bdRes.ok) return { title: term, url: `https://www.amazon.com/s?k=${encodeURIComponent(term)}`, image: null, price: null };
+          if (!r.ok) {
+            return { title: alt.search_query, score: alt.score, label: alt.label, why: alt.why, price: null, image: null, url: `https://www.amazon.com/s?k=${encodeURIComponent(alt.search_query)}` };
+          }
 
-          const html = await bdRes.text();
+          const data = await r.json();
+          const product = data?.data?.products?.[0];
 
-          // Extract first product from Amazon search results
-          const titleMatch = html.match(/class="a-size-medium a-color-base a-text-normal"[^>]*>([^<]+)</);
-          const priceMatch = html.match(/class="a-price-whole">([^<]+)</);
-          const imgMatch = html.match(/s-image[^>]+src="([^"]+)"/);
-          const asinMatch = html.match(/data-asin="([A-Z0-9]{10})"/);
+          if (!product) {
+            return { title: alt.search_query, score: alt.score, label: alt.label, why: alt.why, price: null, image: null, url: `https://www.amazon.com/s?k=${encodeURIComponent(alt.search_query)}` };
+          }
 
-          const title = titleMatch ? titleMatch[1].trim() : term;
-          const price = priceMatch ? `$${priceMatch[1].trim()}` : null;
-          const image = imgMatch ? imgMatch[1] : null;
-          const url = asinMatch
-            ? `https://www.amazon.com/dp/${asinMatch[1]}`
-            : `https://www.amazon.com/s?k=${encodeURIComponent(term)}`;
-
-          return { title, price, image, url };
+          return {
+            title: product.product_title || alt.search_query,
+            score: alt.score,
+            label: alt.label,
+            why: alt.why,
+            price: product.product_price || null,
+            image: product.product_photo || null,
+            url: product.product_url || `https://www.amazon.com/s?k=${encodeURIComponent(alt.search_query)}`
+          };
         } catch (e) {
-          return { title: term, url: `https://www.amazon.com/s?k=${encodeURIComponent(term)}`, image: null, price: null };
+          return { title: alt.search_query, score: alt.score, label: alt.label, why: alt.why, price: null, image: null, url: `https://www.amazon.com/s?k=${encodeURIComponent(alt.search_query)}` };
         }
       })
     );
