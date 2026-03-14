@@ -199,14 +199,14 @@ function renderResults(analysis, amazonProducts) {
       </div>
     </div>`).join('');
 
-  const cards = (analysis.search_terms||[]).map((term, i) => {
-    const prod = amazonProducts[i] || {};
-    const altScore = analysis.alternatives_scores?.[i] || 70;
-    const altLabel = analysis.alternatives_labels?.[i] || scoreClass(altScore).label;
-    const why = analysis.alternatives_why?.[i] || '';
-    const name = prod.title || term;
+  const cards = (amazonProducts||[]).map((prod, i) => {
+    const alt = (analysis.alternatives||[])[i] || {};
+    const altScore = prod.score || alt.score || 70;
+    const altLabel = prod.label || alt.label || scoreClass(altScore).label;
+    const why = prod.why || alt.why || '';
+    const name = prod.title || alt.search_query || 'Product';
     const price = prod.price || 'See on Amazon';
-    const url = prod.url || `https://www.amazon.com/s?k=${encodeURIComponent(term)}`;
+    const url = prod.url || `https://www.amazon.com/s?k=${encodeURIComponent(alt.search_query||name)}`;
     const imgHtml = prod.image
       ? `<img src="${prod.image}" onerror="this.parentElement.innerHTML='<span class=no-img>No image</span>'" />`
       : `<span class="no-img">No image</span>`;
@@ -285,3 +285,4 @@ async function doAnalyzePhoto() {
 </script>
 </body>
 </html>
+Listo
